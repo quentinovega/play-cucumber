@@ -21,6 +21,7 @@ import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.stream.Collectors;
 
 //Copied from https://raw.github.com/cucumber/cucumber-jvm/master/core/src/main/java/cucumber/runtime/formatter/JUnitFormatter.java
 public class CustomJUnitFormatter implements Formatter, Reporter {
@@ -46,6 +47,16 @@ public class CustomJUnitFormatter implements Formatter, Reporter {
 
 	@Override
 	public void feature(Feature feature) {
+		if (feature.getTags() != null && !feature.getTags().isEmpty()) {
+			StringBuilder packageBuilder = new StringBuilder();
+			for (Tag tag : feature.getTags()) {
+				if (packageBuilder.length() > 0) {
+					packageBuilder.append('.');
+				}
+				packageBuilder.append(tag.getName().substring(1));
+			}
+			rootElement.setAttribute("package", packageBuilder.toString());
+		}
 		TestCase.feature = feature;
 	}
 
