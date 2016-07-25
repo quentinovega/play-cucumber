@@ -48,7 +48,7 @@ public class CustomJUnitFormatter implements Formatter, Reporter {
 	}
 
 	private static String transformToPackageName(String tag) {
-		return tag.toLowerCase().replace('-', '_');
+		return tag.toLowerCase().replace('-', '_').replaceAll("@", "");
 	}
 
 	private static String transformAnythingToClassName(String anything) {
