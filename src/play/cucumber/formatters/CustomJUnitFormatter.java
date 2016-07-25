@@ -17,8 +17,10 @@ import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 import java.io.*;
 import java.text.DecimalFormat;
+import java.text.Normalizer;
 import java.text.NumberFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.stream.Collectors;
@@ -45,17 +47,48 @@ public class CustomJUnitFormatter implements Formatter, Reporter {
 		}
 	}
 
+	private static String transformToPackageName(String tag) {
+		return tag.toLowerCase().replace('-', '_');
+	}
+
+	private static String transformAnythingToClassName(String anything) {
+		return Arrays.stream(anything.split(" "))
+				.map(word -> word.split(","))
+				.flatMap(Arrays::stream)
+				.map(word -> word.split("'"))
+				.flatMap(Arrays::stream)
+				.map(word -> word.split("\""))
+				.flatMap(Arrays::stream)
+				.map(word -> word.split("\\."))
+				.flatMap(Arrays::stream)
+				.map(word -> word.split("\\-"))
+				.flatMap(Arrays::stream)
+				.map(word -> word.split("/"))
+				.flatMap(Arrays::stream)
+				.map(word -> word.split("_"))
+				.flatMap(Arrays::stream)
+				.map(word -> word.split(">"))
+				.flatMap(Arrays::stream)
+				.map(String::toLowerCase)
+				.map(word -> word.replaceAll(" ", ""))
+				.map(word -> word.replaceAll("\t", ""))
+				.filter(word -> !word.isEmpty())
+				.map(word -> Normalizer.normalize(word, Normalizer.Form.NFD).replaceAll("\\p{InCombiningDiacriticalMarks}+", ""))
+				.map(word -> word.substring(0, 1).toUpperCase() + word.substring(1))
+				.collect(Collectors.joining());
+	}
+
+	private static String transformAnythingToMethodName(String anything) {
+		String className = transformAnythingToClassName(anything);
+		return className.substring(0, 1).toLowerCase() + className.substring(1);
+	}
+
 	@Override
 	public void feature(Feature feature) {
 		if (feature.getTags() != null && !feature.getTags().isEmpty()) {
-			StringBuilder packageBuilder = new StringBuilder();
-			for (Tag tag : feature.getTags()) {
-				if (packageBuilder.length() > 0) {
-					packageBuilder.append('.');
-				}
-				packageBuilder.append(tag.getName().substring(1));
-			}
-			rootElement.setAttribute("package", packageBuilder.toString());
+			String packageName = feature.getTags().stream().map(Tag::getName).map(CustomJUnitFormatter::transformToPackageName).collect(Collectors.joining("."));
+			rootElement.setAttribute("package", packageName);
+			rootElement.setAttribute("name", transformAnythingToClassName(feature.getName()));
 		}
 		TestCase.feature = feature;
 	}
@@ -205,8 +238,9 @@ public class CustomJUnitFormatter implements Formatter, Reporter {
 
 		private Element writeTo(Document doc) {
 			Element tc = doc.createElement("testcase");
-			tc.setAttribute("classname", feature.getName());
-			tc.setAttribute("name", examples > 0 ? scenario.getName() + "_" + examples-- : scenario.getName());
+			tc.setAttribute("classname", transformAnythingToClassName(feature.getName()));
+			String scenarioname = examples > 0 ? scenario.getName() + "_" + examples-- : scenario.getName();
+			tc.setAttribute("name", transformAnythingToMethodName(scenarioname));
 			long totalDurationNanos = 0;
 			for (Result r : results) {
 				totalDurationNanos += r.getDuration() == null ? 0 : r.getDuration();
