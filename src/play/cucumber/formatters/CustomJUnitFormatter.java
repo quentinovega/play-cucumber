@@ -50,6 +50,14 @@ public class CustomJUnitFormatter implements Formatter, Reporter {
 	private static String transformToPackageName(String tag) {
 		return tag.toLowerCase().replace('-', '_').replaceAll("@", "");
 	}
+	private static String transformFeatureToClassName(Feature feature) {
+		if (feature.getTags() != null && !feature.getTags().isEmpty()) {
+			String packageName = feature.getTags().stream().map(Tag::getName).map(CustomJUnitFormatter::transformToPackageName).collect(Collectors.joining("."));
+			return packageName + "." + transformAnythingToClassName(feature.getName());
+		} else {
+			return transformAnythingToClassName(feature.getName());
+		}
+	}
 
 	private static String transformAnythingToClassName(String anything) {
 		return Arrays.stream(anything.split(" "))
@@ -85,11 +93,7 @@ public class CustomJUnitFormatter implements Formatter, Reporter {
 
 	@Override
 	public void feature(Feature feature) {
-		if (feature.getTags() != null && !feature.getTags().isEmpty()) {
-			String packageName = feature.getTags().stream().map(Tag::getName).map(CustomJUnitFormatter::transformToPackageName).collect(Collectors.joining("."));
-			rootElement.setAttribute("package", packageName);
-			rootElement.setAttribute("name", transformAnythingToClassName(feature.getName()));
-		}
+		rootElement.setAttribute("name", transformFeatureToClassName(feature));
 		TestCase.feature = feature;
 	}
 
@@ -238,7 +242,7 @@ public class CustomJUnitFormatter implements Formatter, Reporter {
 
 		private Element writeTo(Document doc) {
 			Element tc = doc.createElement("testcase");
-			tc.setAttribute("classname", transformAnythingToClassName(feature.getName()));
+			tc.setAttribute("classname", transformFeatureToClassName(feature));
 			String scenarioname = examples > 0 ? scenario.getName() + "_" + examples-- : scenario.getName();
 			tc.setAttribute("name", transformAnythingToMethodName(scenarioname));
 			long totalDurationNanos = 0;
